@@ -24,11 +24,24 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Build Debug APK
-        run: gradle assembleDebug --no-daemon
+      - name: Locate or unpack Android project & Build Debug APK
+        run: |
+          if [ ! -f "settings.gradle.kts" ] && [ -f "hydrogen-android-agent.zip" ]; then
+            unzip -o hydrogen-android-agent.zip
+          fi
+          PROJECT_FILE=$(find . -maxdepth 3 -name "settings.gradle.kts" | head -n 1)
+          if [ -z "$PROJECT_FILE" ]; then
+            echo "ERROR: settings.gradle.kts или hydrogen-android-agent.zip не найден в репозитории!"
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "$PROJECT_FILE")
+          echo "Building in: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+          gradle assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/app-debug.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: hydrogen-agent-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app-debug.apk
